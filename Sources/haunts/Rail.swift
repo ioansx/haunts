@@ -5,16 +5,28 @@ import Combine
 /// of the focused Ghostty window's title bar.
 struct RailView: View {
     @ObservedObject var model: Workspaces
+    /// Live drag: which used-slot position is being dragged, and how far.
+    @State private var drag: (position: Int, translation: CGFloat)?
+
+    /// Tile width (22) + HStack spacing (3).
+    private static let pitch: CGFloat = 25
 
     var body: some View {
         HStack(spacing: 3) {
-            ForEach(model.usedSlots, id: \.self) { i in
+            ForEach(Array(model.usedSlots.enumerated()), id: \.element) { position, i in
                 RailRow(
                     number: i + 1,
                     isActive: model.active == i,
                     status: model.statuses[i],
                     name: model.names[i]
                 ) { model.switchTo(i) }
+                    .offset(x: offsetX(forPosition: position))
+                    .zIndex(drag?.position == position ? 1 : 0)
+                    .animation(
+                        drag?.position == position ? nil : .easeOut(duration: 0.15),
+                        value: offsetX(forPosition: position)
+                    )
+                    .gesture(dragGesture(position: position))
             }
             if !model.usedSlots.isEmpty {
                 Rectangle()
@@ -26,6 +38,34 @@ struct RailView: View {
         }
         .padding(.horizontal, 4)
         .frame(height: 24)
+    }
+
+    private func dragGesture(position: Int) -> some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                drag = (position, value.translation.width)
+            }
+            .onEnded { value in
+                let target = dropPosition(from: position, translation: value.translation.width)
+                drag = nil
+                model.moveWorkspace(fromPosition: position, toPosition: target)
+            }
+    }
+
+    /// The used-slot position the dragged tile would land on.
+    private func dropPosition(from: Int, translation: CGFloat) -> Int {
+        let raw = from + Int((translation / Self.pitch).rounded())
+        return max(0, min(model.usedSlots.count - 1, raw))
+    }
+
+    /// The dragged tile follows the cursor; tiles it has crossed step aside.
+    private func offsetX(forPosition position: Int) -> CGFloat {
+        guard let drag else { return 0 }
+        if position == drag.position { return drag.translation }
+        let target = dropPosition(from: drag.position, translation: drag.translation)
+        if drag.position < position, position <= target { return -Self.pitch }
+        if target <= position, position < drag.position { return Self.pitch }
+        return 0
     }
 }
 

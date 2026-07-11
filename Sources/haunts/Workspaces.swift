@@ -64,6 +64,18 @@ final class Workspaces: ObservableObject {
         refresh()
     }
 
+    /// Reorder: move the window at used-slot position `from` to position `to`,
+    /// shifting the windows between. Numbers stay put; windows change numbers.
+    func moveWorkspace(fromPosition from: Int, toPosition to: Int) {
+        let slots = usedSlots
+        guard from != to, slots.indices.contains(from), slots.indices.contains(to) else { return }
+        var ids = slots.map { windowIDs[$0] }
+        ids.insert(ids.remove(at: from), at: to)
+        for (i, slot) in slots.enumerated() { windowIDs[slot] = ids[i] }
+        save()
+        refresh()
+    }
+
     /// Bind Ghostty's current front window to a slot (removing it from any other).
     func assignFrontWindow(to slot: Int) {
         guard let id = Ghostty.frontWindowID() else { return }

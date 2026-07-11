@@ -18,7 +18,8 @@ shipped in Ghostty 1.3, so it needs **Ghostty ≥ 1.3**.
 
 Each workspace is one Ghostty window (with its native tabs). Windows are
 adopted into free slots automatically. The strip rides the right half of the
-focused window's title bar: click a number to switch, `+` to add. The menu
+focused window's title bar: click a number to switch, `+` to add, drag a
+number to reorder (windows shift numbers; the strip stays 1…n). The menu
 bar shows the active workspace number, with an amber dot when any agent
 needs attention.
 
