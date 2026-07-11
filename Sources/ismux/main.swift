@@ -10,13 +10,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = Workspaces()
     let hotkeys = Hotkeys()
     var rail: RailController?
-    var statusItem: NSStatusItem?
+    var statusMenu: StatusMenu?
 
     func applicationDidFinishLaunching(_ note: Notification) {
         model.start()
         rail = RailController(model: model)
+        statusMenu = StatusMenu(model: model)
         setupHotkeys()
-        setupStatusItem()
     }
 
     private func setupHotkeys() {
@@ -36,20 +36,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func setupStatusItem() {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "square.split.2x2", accessibilityDescription: "ismux")
-        let menu = NSMenu()
-        let refresh = NSMenuItem(title: "Refresh", action: #selector(doRefresh), keyEquivalent: "r")
-        refresh.target = self
-        menu.addItem(refresh)
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit ismux", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        item.menu = menu
-        statusItem = item
-    }
-
-    @objc private func doRefresh() { model.refresh() }
 }
 
 MainActor.assumeIsolated {
