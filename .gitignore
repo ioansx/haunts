@@ -1,0 +1,5 @@
+.build/
+ismux.app/
+.debug.log
+.DS_Store
+.claude/settings.local.json
