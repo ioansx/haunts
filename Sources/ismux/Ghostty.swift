@@ -3,6 +3,7 @@ import AppKit
 struct GhosttyWindow {
     let id: String
     let name: String
+    let cwds: [String]
 }
 
 /// Talks to Ghostty via its AppleScript dictionary (Ghostty >= 1.3).
@@ -26,15 +27,25 @@ enum Ghostty {
         set out to ""
         tell application "Ghostty"
             repeat with w in windows
-                set out to out & (id of w as text) & d & (name of w) & lf
+                set l to (id of w as text) & d & (name of w)
+                repeat with t in terminals of w
+                    try
+                        set l to l & d & (working directory of t as text)
+                    end try
+                end repeat
+                set out to out & l & lf
             end repeat
         end tell
         return out
         """) ?? ""
         return out.split(separator: "\n").compactMap { line in
-            let parts = line.split(separator: "\t", maxSplits: 1)
-            guard let first = parts.first, !first.isEmpty else { return nil }
-            return GhosttyWindow(id: String(first), name: parts.count > 1 ? String(parts[1]) : "")
+            let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+            guard let id = parts.first, !id.isEmpty else { return nil }
+            return GhosttyWindow(
+                id: id,
+                name: parts.count > 1 ? parts[1] : "",
+                cwds: Array(parts.dropFirst(2))
+            )
         }
     }
 
