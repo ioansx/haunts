@@ -78,6 +78,32 @@ enum Ghostty {
         return (id?.isEmpty ?? true) ? nil : id
     }
 
+    /// Screen frame (Cocoa coordinates) of Ghostty's frontmost window, via
+    /// CGWindowList — no permissions needed for bounds, and cheap enough to
+    /// poll. Returns nil if Ghostty has no window on the active Space.
+    static func frontWindowFrame() -> NSRect? {
+        guard let app = NSRunningApplication
+            .runningApplications(withBundleIdentifier: bundleID).first,
+            let list = CGWindowListCopyWindowInfo(
+                [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
+            ) as? [[String: Any]]
+        else { return nil }
+        for info in list {
+            guard let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+                  pid == app.processIdentifier,
+                  let layer = info[kCGWindowLayer as String] as? Int, layer == 0,
+                  let b = info[kCGWindowBounds as String] as? [String: CGFloat],
+                  let x = b["X"], let y = b["Y"], let w = b["Width"], let h = b["Height"],
+                  w > 100, h > 100
+            else { continue }
+            // CGWindow coords are top-left origin; Cocoa are bottom-left of
+            // the primary screen.
+            let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+            return NSRect(x: x, y: primaryHeight - y - h, width: w, height: h)
+        }
+        return nil
+    }
+
     private static func escaped(_ s: String) -> String {
         s.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")

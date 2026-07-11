@@ -1,13 +1,13 @@
 import SwiftUI
 import Combine
 
-private let railShape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-
+/// Horizontal, chromeless workspace strip that rides the empty right half
+/// of the focused Ghostty window's title bar.
 struct RailView: View {
     @ObservedObject var model: Workspaces
 
     var body: some View {
-        VStack(spacing: 2) {
+        HStack(spacing: 3) {
             ForEach(model.usedSlots, id: \.self) { i in
                 RailRow(
                     number: i + 1,
@@ -18,17 +18,14 @@ struct RailView: View {
             }
             if !model.usedSlots.isEmpty {
                 Rectangle()
-                    .fill(Color.white.opacity(0.08))
-                    .frame(width: 14, height: 1)
-                    .padding(.vertical, 3)
+                    .fill(Color.white.opacity(0.15))
+                    .frame(width: 1, height: 12)
+                    .padding(.horizontal, 2)
             }
             AddRow { model.addWorkspace() }
         }
-        .padding(6)
-        .background(railShape.fill(.regularMaterial))
-        .background(railShape.fill(Color.black.opacity(0.28)))
-        .overlay(railShape.strokeBorder(Color.white.opacity(0.09), lineWidth: 1))
-        .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
+        .padding(.horizontal, 4)
+        .frame(height: 24)
     }
 }
 
@@ -42,13 +39,13 @@ private struct RailRow: View {
 
     var body: some View {
         Text("\(number)")
-            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
             .monospacedDigit()
-            .foregroundStyle(.white.opacity(isActive ? 1.0 : hovered ? 0.85 : 0.55))
-            .frame(width: 28, height: 28)
+            .foregroundStyle(.white.opacity(isActive ? 1.0 : hovered ? 0.85 : 0.5))
+            .frame(width: 22, height: 22)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.white.opacity(isActive ? 0.17 : hovered ? 0.10 : 0))
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.white.opacity(isActive ? 0.18 : hovered ? 0.10 : 0))
             )
             .overlay(alignment: .topTrailing) {
                 if let status {
@@ -85,8 +82,8 @@ private struct Badge: View {
     var body: some View {
         Circle()
             .fill(color)
-            .frame(width: 8, height: 8)
-            .shadow(color: color.opacity(status == .idle ? 0 : 0.7), radius: 3)
+            .frame(width: 7, height: 7)
+            .shadow(color: color.opacity(status == .idle ? 0 : 0.7), radius: 2.5)
             .opacity(status == .working && pulsing ? 0.4 : 1)
             .animation(
                 status == .working
@@ -104,11 +101,11 @@ private struct AddRow: View {
 
     var body: some View {
         Image(systemName: "plus")
-            .font(.system(size: 10.5, weight: .semibold))
-            .foregroundStyle(.white.opacity(hovered ? 0.9 : 0.45))
-            .frame(width: 28, height: 24)
+            .font(.system(size: 9.5, weight: .semibold))
+            .foregroundStyle(.white.opacity(hovered ? 0.9 : 0.4))
+            .frame(width: 20, height: 22)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(Color.white.opacity(hovered ? 0.10 : 0))
             )
             .contentShape(Rectangle())
@@ -122,15 +119,16 @@ private struct AddRow: View {
     }
 }
 
-/// Owns the floating rail panel: borderless, non-activating, draggable,
-/// floating near the top-right corner, resizing (top-right anchored) as
-/// workspaces come and go. Visible only while Ghostty is frontmost.
+/// Owns the rail panel and keeps it glued to the title bar of Ghostty's
+/// focused window (right-aligned), hiding whenever Ghostty isn't frontmost.
 @MainActor
 final class RailController {
     let panel: NSPanel
     private let host: NSHostingView<RailView>
     private var sub: AnyCancellable?
     private var activationObserver: NSObjectProtocol?
+    private var positionTimer: Timer?
+    private var ghosttyIsFront = false
 
     init(model: Workspaces) {
         host = NSHostingView(rootView: RailView(model: model))
@@ -144,51 +142,60 @@ final class RailController {
         panel.contentView = host
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        // Keep the material/colors dark regardless of system appearance.
+        panel.hasShadow = false
+        // Keep colors dark regardless of system appearance.
         panel.appearance = NSAppearance(named: .darkAqua)
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.isMovableByWindowBackground = true
+        panel.isMovableByWindowBackground = false
         panel.hidesOnDeactivate = false
         // Hover must work even though this panel never becomes key.
         panel.acceptsMouseMovedEvents = true
         panel.becomesKeyOnlyIfNeeded = true
-        if let screen = NSScreen.main {
-            let f = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(x: f.maxX - size.width - 8, y: f.maxY - size.height - 8))
-        }
 
-        // Only show the rail while Ghostty is the frontmost app.
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil, queue: .main
         ) { [weak self] note in
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            self?.setVisible(app?.bundleIdentifier == Ghostty.bundleID)
+            self?.ghosttyIsFront = app?.bundleIdentifier == Ghostty.bundleID
+            self?.reposition()
         }
-        setVisible(NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Ghostty.bundleID)
+        ghosttyIsFront = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Ghostty.bundleID
 
-        // objectWillChange fires pre-mutation; the main-queue hop makes
-        // resize() run after SwiftUI has applied the update.
+        // Track the window as it moves/resizes. CGWindowList is microseconds
+        // per call; 0.25s keeps the rail feeling attached without AX perms.
+        positionTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.reposition() }
+        }
+
         sub = model.objectWillChange
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.resize() }
+            .sink { [weak self] _ in
+                DispatchQueue.main.async { self?.reposition() }
+            }
+        reposition()
     }
 
-    private func setVisible(_ visible: Bool) {
-        if visible {
-            panel.orderFrontRegardless()
-        } else {
+    private func reposition() {
+        guard ghosttyIsFront, let windowFrame = Ghostty.frontWindowFrame() else {
             panel.orderOut(nil)
+            return
         }
-    }
-
-    private func resize() {
         let size = host.fittingSize
-        guard size != panel.frame.size else { return }
-        let top = panel.frame.maxY
-        let right = panel.frame.maxX
-        panel.setContentSize(size)
-        panel.setFrameOrigin(NSPoint(x: right - size.width, y: top - size.height))
+        if size != panel.frame.size {
+            panel.setContentSize(size)
+        }
+        // Right-aligned in the title bar row (top ~28pt of the window).
+        let origin = NSPoint(
+            x: windowFrame.maxX - size.width - 10,
+            y: windowFrame.maxY - size.height - 3
+        )
+        if origin != panel.frame.origin {
+            panel.setFrameOrigin(origin)
+        }
+        if !panel.isVisible {
+            panel.orderFrontRegardless()
+        }
     }
 }
