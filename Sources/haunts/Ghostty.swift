@@ -114,7 +114,7 @@ enum Ghostty {
         var error: NSDictionary?
         let result = script.executeAndReturnError(&error)
         if let error {
-            NSLog("ismux: applescript error: %@", error)
+            NSLog("haunts: applescript error: %@", error)
             return nil
         }
         return result.stringValue

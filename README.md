@@ -1,12 +1,12 @@
-# ismux
+# Haunts — workspaces for Ghostty
 
-Workspace switcher for [Ghostty](https://ghostty.org) on macOS. One layer above
-tabs: each workspace is a Ghostty window (with all its native tabs), a floating
-rail on the left edge shows workspaces 1–9, and hotkeys jump between them.
+A haunt is where a ghost spends its time. Haunts gives [Ghostty](https://ghostty.org)
+numbered workspaces — one layer above tabs — with a strip in the title bar,
+instant hotkey switching, and live Claude Code agent status per workspace.
 
 Ghostty stays completely stock — full Metal rendering speed, no mux in the
-render path. ismux talks to it through the AppleScript dictionary that shipped
-in Ghostty 1.3, so it needs **Ghostty ≥ 1.3**.
+render path. Haunts talks to it through the AppleScript dictionary that
+shipped in Ghostty 1.3, so it needs **Ghostty ≥ 1.3**.
 
 ## Keys
 
@@ -16,30 +16,37 @@ in Ghostty 1.3, so it needs **Ghostty ≥ 1.3**.
 | `⌃⌥0` | New workspace (next free number) |
 | `⌃⌥⇧1` … `⌃⌥⇧9` | Renumber: move Ghostty's front window to workspace N |
 
-Ghostty windows are adopted into free slots automatically, so existing
-windows get numbers on launch and new ones (however opened) appear within a
-couple of seconds. The rail shows only occupied slots plus a `+` button;
-clicking a number switches, clicking `+` adds a workspace. The rail is
-draggable. The yellow ring marks the active workspace.
+Each workspace is one Ghostty window (with its native tabs). Windows are
+adopted into free slots automatically. The strip rides the right half of the
+focused window's title bar: click a number to switch, `+` to add. The menu
+bar shows the active workspace number, with an amber dot when any agent
+needs attention.
 
-## Build & run
+## Agent status
+
+Claude Code hooks (`hooks/haunts-agent-status`, registered in
+`~/.claude/settings.json`) report each session's state; Haunts matches
+agents to workspaces by working directory. Badge colors: blue = working
+(pulsing), orange = needs you, green = done (clears when you focus the
+workspace), gray = idle.
+
+## Install
 
 ```sh
-./make-app.sh
-open ismux.app
+./install.sh
 ```
 
-On first switch, macOS asks to allow ismux to control Ghostty
-(System Settings → Privacy & Security → Automation if you need to re-enable).
-
-For development, `swift run` works too — the Automation permission then
-attaches to your terminal instead of ismux.
+Builds, signs, and copies Haunts.app to /Applications. On first switch,
+macOS asks to allow Haunts to control Ghostty. For a signing identity that
+survives rebuilds (no repeated permission prompts), create a code-signing
+certificate named `haunts-dev` in Keychain Access; the build scripts pick
+it up automatically.
 
 ## Notes
 
-- Ghostty window ids (`tab-group-…`) don't survive a Ghostty restart, so
-  workspace assignments reset when Ghostty quits. Reassign with `⌃⌥⇧N`.
-- Ghostty's AppleScript support is a preview feature; if a Ghostty update
-  breaks something, all Ghostty calls live in `Sources/ismux/Ghostty.swift`.
+- Ghostty window ids don't survive a Ghostty restart; windows re-adopt
+  automatically (in z-order), and `⌃⌥⇧N` rearranges.
+- Ghostty's AppleScript support is a preview feature; all Ghostty calls
+  live in `Sources/haunts/Ghostty.swift`.
 - Hotkeys use Carbon `RegisterEventHotKey` — no Accessibility permission
-  needed. Change the modifier combos in `main.swift` (`setupHotkeys`).
+  needed. Modifier combos live in `main.swift` (`setupHotkeys`).

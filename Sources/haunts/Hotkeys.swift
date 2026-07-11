@@ -27,7 +27,7 @@ final class Hotkeys {
     func register(id: UInt32, keyCode: UInt32, modifiers: UInt32, _ handler: @escaping () -> Void) {
         handlers[id] = handler
         var ref: EventHotKeyRef?
-        let hkID = EventHotKeyID(signature: 0x4953_4D58, id: id) // 'ISMX'
+        let hkID = EventHotKeyID(signature: 0x484E_5453, id: id) // 'HNTS'
         RegisterEventHotKey(keyCode, modifiers, hkID, GetApplicationEventTarget(), 0, &ref)
         refs.append(ref)
     }

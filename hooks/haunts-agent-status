@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Claude Code hook: record this agent's status for the ismux rail.
+"""Claude Code hook: record this agent's status for the Haunts rail.
 
 Reads the hook event JSON from stdin and writes/removes
-~/.local/state/ismux/agents/<session_id>.json containing
+~/.local/state/haunts/agents/<session_id>.json containing
 {"cwd": ..., "status": idle|working|blocked|done}.
 
 States mirror herdr: idle (session at rest), working (processing a turn),
 blocked (permission request / waiting for input), done (finished a turn,
-not yet seen — ismux flips it back to idle when the workspace is focused).
+not yet seen — Haunts flips it back to idle when the workspace is focused).
 """
 import json
 import os
@@ -27,7 +27,7 @@ session_id = data.get("session_id", "")
 if not session_id or data.get("agent_id"):
     sys.exit(0)  # no session, or a subagent event — not pane status
 
-state_dir = pathlib.Path.home() / ".local/state/ismux/agents"
+state_dir = pathlib.Path.home() / ".local/state/haunts/agents"
 state_file = state_dir / f"{session_id}.json"
 
 if event == "SessionEnd":
@@ -39,4 +39,4 @@ elif event in STATUS_BY_EVENT:
         "cwd": data.get("cwd", ""),
         "status": STATUS_BY_EVENT[event],
     }))
-    os.replace(tmp, state_file)  # atomic; also tickles ismux's dir watcher
+    os.replace(tmp, state_file)  # atomic; also tickles Haunts' dir watcher

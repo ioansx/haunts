@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "ismux",
+    name: "haunts",
     platforms: [.macOS(.v13)],
     targets: [
-        .executableTarget(name: "ismux", path: "Sources/ismux")
+        .executableTarget(name: "haunts", path: "Sources/haunts")
     ]
 )

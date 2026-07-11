@@ -43,7 +43,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
             button.attributedTitle = title
         } else {
             button.attributedTitle = NSAttributedString(string: "")
-            button.image = NSImage(systemSymbolName: "square.split.2x2", accessibilityDescription: "ismux")
+            button.image = NSImage(systemSymbolName: "square.split.2x2", accessibilityDescription: "Haunts")
         }
     }
 
@@ -92,7 +92,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(login)
 
-        menu.addItem(NSMenuItem(title: "Quit ismux", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit Haunts", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
     private func rowTitle(slot: Int) -> NSAttributedString {
@@ -133,7 +133,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
                 try service.register()
             }
         } catch {
-            NSLog("ismux: launch-at-login toggle failed: %@", error.localizedDescription)
+            NSLog("haunts: launch-at-login toggle failed: %@", error.localizedDescription)
         }
     }
 }

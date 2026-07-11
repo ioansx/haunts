@@ -1,15 +1,13 @@
 #!/bin/sh
-# Build ismux and install it to /Applications, replacing any running copy.
+# Build Haunts and install it to /Applications, replacing any running copy.
 set -e
 cd "$(dirname "$0")"
 
 ./make-app.sh
 
-pkill -f 'ismux.app/Contents/MacOS/ismux' 2>/dev/null || true
-rm -rf /Applications/ismux.app
-cp -R ismux.app /Applications/ismux.app
-open /Applications/ismux.app
+pkill -f 'Haunts.app/Contents/MacOS/haunts' 2>/dev/null || true
+rm -rf /Applications/Haunts.app
+cp -R Haunts.app /Applications/Haunts.app
+open /Applications/Haunts.app
 
-echo "Installed /Applications/ismux.app and launched it."
-echo "Note: first run from the new location re-prompts the Ghostty automation"
-echo "permission, and Launch at Login should be re-toggled from the menu bar."
+echo "Installed /Applications/Haunts.app and launched it."

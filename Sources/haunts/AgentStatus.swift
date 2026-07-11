@@ -1,7 +1,7 @@
 import Foundation
 
 /// Agent lifecycle state reported by the Claude Code hooks
-/// (hooks/ismux-agent-status). Same states as herdr: idle, working,
+/// (hooks/haunts-agent-status). Same states as herdr: idle, working,
 /// blocked, done — ordered by display priority for aggregation.
 enum AgentStatus: String, Comparable {
     case idle
@@ -27,11 +27,11 @@ struct AgentState {
     let status: AgentStatus
 }
 
-/// Reads ~/.local/state/ismux/agents/<session>.json files written by the
+/// Reads ~/.local/state/haunts/agents/<session>.json files written by the
 /// Claude Code hooks.
 enum AgentStates {
     static let dir = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".local/state/ismux/agents")
+        .appendingPathComponent(".local/state/haunts/agents")
 
     /// All live agents. Files older than a day are ignored (leftovers from
     /// crashed sessions).

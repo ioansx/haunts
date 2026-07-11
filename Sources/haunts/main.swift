@@ -1,7 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 
-// ismux — workspace switcher for Ghostty.
+// Haunts — workspaces for Ghostty.
 // ⌃⌥1-9 switches to a workspace (creates a window on an empty slot),
 // ⌃⌥⇧1-9 assigns Ghostty's front window to a workspace.
 

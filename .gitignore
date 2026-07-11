@@ -1,5 +1,5 @@
 .build/
-ismux.app/
+Haunts.app/
 .debug.log
 .DS_Store
 .claude/settings.local.json
