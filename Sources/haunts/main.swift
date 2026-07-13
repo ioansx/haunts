@@ -2,8 +2,8 @@ import AppKit
 import Carbon.HIToolbox
 
 // Haunts — workspaces for Ghostty.
-// ⌃⌥1-9 switches to a workspace (creates a window on an empty slot),
-// ⌃⌥⇧1-9 assigns Ghostty's front window to a workspace.
+// ⌘⌥1-9 switches to a workspace (creates a window on an empty slot),
+// ⌘⌥⇧1-9 assigns Ghostty's front window to a workspace.
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -20,8 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupHotkeys() {
-        let switchMods = UInt32(controlKey | optionKey)
-        let assignMods = UInt32(controlKey | optionKey | shiftKey)
+        let switchMods = UInt32(cmdKey | optionKey)
+        let assignMods = UInt32(cmdKey | optionKey | shiftKey)
         for i in 0..<Workspaces.slots {
             hotkeys.register(id: UInt32(i + 1), keyCode: digitKeyCodes[i], modifiers: switchMods) { [model] in
                 model.switchTo(i)
@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 model.assignFrontWindow(to: i)
             }
         }
-        // ⌃⌥0 — new workspace (key code 29 = ANSI 0)
+        // ⌘⌥0 — new workspace (key code 29 = ANSI 0)
         hotkeys.register(id: 200, keyCode: 29, modifiers: switchMods) { [model] in
             model.addWorkspace()
         }

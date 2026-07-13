@@ -17,6 +17,7 @@ import sys
 STATUS_BY_EVENT = {
     "SessionStart": "idle",
     "UserPromptSubmit": "working",
+    "PostToolUse": "working",  # tool ran => any permission prompt was answered
     "Stop": "done",
     "Notification": "blocked",  # permission request or waiting for input
 }

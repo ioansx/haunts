@@ -198,8 +198,11 @@ final class RailController {
             object: nil, queue: .main
         ) { [weak self] note in
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            self?.ghosttyIsFront = app?.bundleIdentifier == Ghostty.bundleID
-            self?.reposition()
+            let isGhostty = app?.bundleIdentifier == Ghostty.bundleID
+            MainActor.assumeIsolated { // observer queue is .main
+                self?.ghosttyIsFront = isGhostty
+                self?.reposition()
+            }
         }
         ghosttyIsFront = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Ghostty.bundleID
 
