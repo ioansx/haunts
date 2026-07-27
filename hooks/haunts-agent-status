@@ -3,15 +3,19 @@
 
 Reads the hook event JSON from stdin and writes/removes
 ~/.local/state/haunts/agents/<session_id>.json containing
-{"cwd": ..., "status": idle|working|blocked|done}.
+{"cwd": ..., "status": idle|working|blocked|done, "pid": ...}.
+
+The pid is the Claude process, so Haunts can drop the state of a session
+that was killed without a SessionEnd event (closed tab, Ctrl-C).
 
 States mirror herdr: idle (session at rest), working (processing a turn),
-blocked (permission request / waiting for input), done (finished a turn,
+blocked (needs you: permission request or a dialog), done (finished a turn,
 not yet seen — Haunts flips it back to idle when the workspace is focused).
 """
 import json
 import os
 import pathlib
+import subprocess
 import sys
 
 STATUS_BY_EVENT = {
@@ -19,8 +23,39 @@ STATUS_BY_EVENT = {
     "UserPromptSubmit": "working",
     "PostToolUse": "working",  # tool ran => any permission prompt was answered
     "Stop": "done",
-    "Notification": "blocked",  # permission request or waiting for input
 }
+
+# Notification fires both when a session needs you and when it has simply been
+# sitting at an empty prompt — reading every one of them as "blocked" pins the
+# badge orange on an idle session. Types missing here (auth_success,
+# agent_completed, …) say nothing about the session, so they leave it as is.
+STATUS_BY_NOTIFICATION = {
+    "permission_prompt": "blocked",
+    "elicitation_dialog": "blocked",
+    "agent_needs_input": "blocked",
+    "idle_prompt": "idle",
+}
+
+
+def claude_pid():
+    """Walk up from this hook to the Claude process that spawned it.
+
+    None if it isn't found (a shell wrapper we don't expect, say) — Haunts
+    then falls back to expiring the state file by age.
+    """
+    pid = os.getppid()
+    for _ in range(4):
+        out = subprocess.run(
+            ["ps", "-o", "ppid=,comm=", "-p", str(pid)],
+            capture_output=True, text=True,
+        ).stdout.split()
+        if len(out) < 2:
+            return None
+        if os.path.basename(out[1]) == "claude":
+            return pid
+        pid = int(out[0])
+    return None
+
 
 data = json.load(sys.stdin)
 event = data.get("hook_event_name", "")
@@ -33,11 +68,20 @@ state_file = state_dir / f"{session_id}.json"
 
 if event == "SessionEnd":
     state_file.unlink(missing_ok=True)
-elif event in STATUS_BY_EVENT:
-    state_dir.mkdir(parents=True, exist_ok=True)
-    tmp = state_file.with_suffix(".tmp")
-    tmp.write_text(json.dumps({
-        "cwd": data.get("cwd", ""),
-        "status": STATUS_BY_EVENT[event],
-    }))
-    os.replace(tmp, state_file)  # atomic; also tickles Haunts' dir watcher
+    sys.exit(0)
+
+if event == "Notification":
+    status = STATUS_BY_NOTIFICATION.get(data.get("notification_type", ""))
+else:
+    status = STATUS_BY_EVENT.get(event)
+if status is None:
+    sys.exit(0)
+
+state_dir.mkdir(parents=True, exist_ok=True)
+state = {"cwd": data.get("cwd", ""), "status": status}
+pid = claude_pid()
+if pid:
+    state["pid"] = str(pid)  # as text: Haunts reads a flat string map
+tmp = state_file.with_suffix(".tmp")
+tmp.write_text(json.dumps(state))
+os.replace(tmp, state_file)  # atomic; also tickles Haunts' dir watcher

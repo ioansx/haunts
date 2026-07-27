@@ -11,14 +11,24 @@ final class Workspaces: ObservableObject {
     @Published private(set) var statuses: [AgentStatus?] = Array(repeating: nil, count: slots)
     @Published private(set) var active: Int?
 
+    /// The directory each slot's window was last seen in. Ghostty window ids
+    /// are per-process, so a Ghostty restart makes every window look new;
+    /// this is what puts them back on their old numbers instead of handing
+    /// out numbers in z-order.
+    private var homes: [String] = Array(repeating: "", count: slots)
+
     private let defaults = UserDefaults.standard
     private let key = "workspaceWindowIDs"
+    private let homesKey = "workspaceHomeDirs"
     private var timer: Timer?
     private var agentDirWatcher: DispatchSourceFileSystemObject?
 
     func start() {
         if let saved = defaults.stringArray(forKey: key), saved.count == Self.slots {
             windowIDs = saved.map { $0.isEmpty ? nil : $0 }
+        }
+        if let saved = defaults.stringArray(forKey: homesKey), saved.count == Self.slots {
+            homes = saved
         }
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
@@ -89,7 +99,9 @@ final class Workspaces: ObservableObject {
     /// ones into free slots, update names, agent statuses, and which
     /// workspace is active.
     func refresh() {
-        let windows = Ghostty.listWindows()
+        // No answer from Ghostty is not the same as "no windows": dropping
+        // every binding here would renumber all workspaces on the next tick.
+        guard let windows = Ghostty.listWindows() else { return }
         let live = Dictionary(
             windows.map { ($0.id, $0) },
             uniquingKeysWith: { first, _ in first }
@@ -103,12 +115,16 @@ final class Workspaces: ObservableObject {
         }
         let bound = Set(windowIDs.compactMap { $0 })
         for w in windows where !bound.contains(w.id) {
-            guard let free = windowIDs.firstIndex(of: nil) else { break }
+            guard let free = slot(for: w) else { break }
             windowIDs[free] = w.id
             changed = true
         }
         for i in windowIDs.indices {
             names[i] = windowIDs[i].flatMap { live[$0]?.name } ?? ""
+            if let home = windowIDs[i].flatMap({ live[$0]?.cwds.first }), homes[i] != home {
+                homes[i] = home
+                changed = true
+            }
         }
         if changed { save() }
         let front = Ghostty.frontWindowID()
@@ -116,31 +132,49 @@ final class Workspaces: ObservableObject {
         updateStatuses(live: live)
     }
 
+    /// Where a window Haunts hasn't seen before belongs: the free slot that
+    /// remembers one of its directories — so a window reopened after a
+    /// Ghostty restart keeps its number — else the first free slot.
+    private func slot(for window: GhosttyWindow) -> Int? {
+        windowIDs.indices.first {
+            windowIDs[$0] == nil && !homes[$0].isEmpty && window.cwds.contains(homes[$0])
+        } ?? windowIDs.firstIndex(of: nil)
+    }
+
     /// Map each agent (by its cwd) to the workspace whose window has the
     /// longest matching working-directory prefix; a workspace's worst agent
     /// status wins. Longest-prefix means an agent in ~/dev/proj lands on
-    /// the ~/dev/proj window even if another window sits in ~. The focused
-    /// workspace's "done" agents count as seen and drop back to idle.
+    /// the ~/dev/proj window even if another window sits in ~. Windows in
+    /// the same directory are indistinguishable from a cwd, so they all get
+    /// the badge rather than the lowest-numbered one silently taking it.
+    /// The focused workspace's "done" agents count as seen and drop back to idle.
     private func updateStatuses(live: [String: GhosttyWindow]) {
         var slotAgents: [[AgentState]] = Array(repeating: [], count: Self.slots)
         for agent in AgentStates.all() {
-            var best: (slot: Int, length: Int)?
+            var bestLength = 0
+            var bestSlots: [Int] = []
             for i in windowIDs.indices {
                 guard let id = windowIDs[i], let win = live[id] else { continue }
-                for cwd in win.cwds where agent.cwd == cwd || agent.cwd.hasPrefix(cwd + "/") {
-                    if best == nil || cwd.count > best!.length {
-                        best = (i, cwd.count)
+                for cwd in win.cwds where !cwd.isEmpty
+                    && (agent.cwd == cwd || agent.cwd.hasPrefix(cwd + "/")) {
+                    if cwd.count > bestLength {
+                        bestLength = cwd.count
+                        bestSlots = [i]
+                    } else if cwd.count == bestLength, !bestSlots.contains(i) {
+                        bestSlots.append(i)
                     }
                 }
             }
-            if let best { slotAgents[best.slot].append(agent) }
+            for slot in bestSlots { slotAgents[slot].append(agent) }
         }
         if let active {
             for agent in slotAgents[active] where agent.status == .done {
                 AgentStates.markIdle(agent)
             }
             slotAgents[active] = slotAgents[active].map {
-                $0.status == .done ? AgentState(file: $0.file, cwd: $0.cwd, status: .idle) : $0
+                $0.status == .done
+                    ? AgentState(file: $0.file, cwd: $0.cwd, status: .idle, pid: $0.pid)
+                    : $0
             }
         }
         statuses = slotAgents.map { $0.map(\.status).max() }
@@ -148,5 +182,6 @@ final class Workspaces: ObservableObject {
 
     private func save() {
         defaults.set(windowIDs.map { $0 ?? "" }, forKey: key)
+        defaults.set(homes, forKey: homesKey)
     }
 }

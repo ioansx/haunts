@@ -95,7 +95,9 @@ private struct RailRow: View {
             }
             .contentShape(Rectangle())
             .animation(.easeOut(duration: 0.15), value: hovered)
-            .animation(.easeOut(duration: 0.15), value: isActive)
+            // No animation on the switch itself: the highlight should already
+            // be on the new number by the time the window comes up.
+            .animation(nil, value: isActive)
             .onTapGesture(perform: action)
             .onHover { inside in
                 hovered = inside

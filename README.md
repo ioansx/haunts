@@ -45,8 +45,9 @@ it up automatically.
 
 ## Notes
 
-- Ghostty window ids don't survive a Ghostty restart; windows re-adopt
-  automatically (in z-order), and `⌃⌥⇧N` rearranges.
+- Ghostty window ids don't survive a Ghostty restart; Haunts remembers each
+  workspace's directory and re-adopts windows onto their old numbers, falling
+  back to the first free slot. `⌃⌥⇧N` rearranges.
 - Ghostty's AppleScript support is a preview feature; all Ghostty calls
   live in `Sources/haunts/Ghostty.swift`.
 - Hotkeys use Carbon `RegisterEventHotKey` — no Accessibility permission
