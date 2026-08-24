@@ -15,7 +15,7 @@ struct RailView: View {
         HStack(spacing: 3) {
             ForEach(Array(model.usedSlots.enumerated()), id: \.element) { position, i in
                 RailRow(
-                    number: i + 1,
+                    label: Workspaces.keys[i].label,
                     isActive: model.active == i,
                     status: model.statuses[i],
                     name: model.names[i]
@@ -70,7 +70,7 @@ struct RailView: View {
 }
 
 private struct RailRow: View {
-    let number: Int
+    let label: String
     let isActive: Bool
     let status: AgentStatus?
     let name: String
@@ -78,9 +78,8 @@ private struct RailRow: View {
     @State private var hovered = false
 
     var body: some View {
-        Text("\(number)")
+        Text(label)
             .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-            .monospacedDigit()
             .foregroundStyle(.white.opacity(isActive ? 1.0 : hovered ? 0.85 : 0.5))
             .frame(width: 22, height: 22)
             .background(
@@ -103,7 +102,7 @@ private struct RailRow: View {
                 hovered = inside
                 if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
             }
-            .help(name.isEmpty ? "Workspace \(number)" : name)
+            .help(name.isEmpty ? "Workspace \(label)" : name)
     }
 }
 
@@ -157,7 +156,7 @@ private struct AddRow: View {
                 hovered = inside
                 if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
             }
-            .help("New workspace (⌃⌥0)")
+            .help("New workspace (⌘⌥0)")
     }
 }
 

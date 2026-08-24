@@ -1,7 +1,7 @@
 # Haunts — workspaces for Ghostty
 
 A haunt is where a ghost spends its time. Haunts gives [Ghostty](https://ghostty.org)
-numbered workspaces — one layer above tabs — with a strip in the title bar,
+lettered workspaces — one layer above tabs — with a strip in the title bar,
 instant hotkey switching, and live Claude Code agent status per workspace.
 
 Ghostty stays completely stock — full Metal rendering speed, no mux in the
@@ -10,17 +10,20 @@ shipped in Ghostty 1.3, so it needs **Ghostty ≥ 1.3**.
 
 ## Keys
 
+Workspaces are keyed by the left hand's home row, then the row above:
+**A S D F G Q W E R T**, in that order.
+
 | Key | Action |
 |---|---|
-| `⌃⌥1` … `⌃⌥9` | Switch to workspace N (empty slot: opens a new window and binds it) |
-| `⌃⌥0` | New workspace (next free number) |
-| `⌃⌥⇧1` … `⌃⌥⇧9` | Renumber: move Ghostty's front window to workspace N |
+| `⌘⌥A` … `⌘⌥T` | Switch to that workspace (empty slot: opens a new window and binds it) |
+| `⌘⌥0` | New workspace (next free letter) |
+| `⌘⌥⇧A` … `⌘⌥⇧T` | Move Ghostty's front window to that workspace |
 
 Each workspace is one Ghostty window (with its native tabs). Windows are
 adopted into free slots automatically. The strip rides the right half of the
-focused window's title bar: click a number to switch, `+` to add, drag a
-number to reorder (windows shift numbers; the strip stays 1…n). The menu
-bar shows the active workspace number, with an amber dot when any agent
+focused window's title bar: click a letter to switch, `+` to add, drag a
+letter to reorder (windows shift letters; the strip stays A…T). The menu
+bar shows the active workspace letter, with an amber dot when any agent
 needs attention.
 
 ## Agent status
@@ -46,8 +49,8 @@ it up automatically.
 ## Notes
 
 - Ghostty window ids don't survive a Ghostty restart; Haunts remembers each
-  workspace's directory and re-adopts windows onto their old numbers, falling
-  back to the first free slot. `⌃⌥⇧N` rearranges.
+  workspace's directory and re-adopts windows onto their old letters, falling
+  back to the first free slot. `⌘⌥⇧`+letter rearranges.
 - Ghostty's AppleScript support is a preview feature; all Ghostty calls
   live in `Sources/haunts/Ghostty.swift`.
 - Hotkeys use Carbon `RegisterEventHotKey` — no Accessibility permission

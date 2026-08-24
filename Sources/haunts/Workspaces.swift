@@ -1,10 +1,17 @@
 import AppKit
 import Combine
 
-/// Nine numbered workspaces, each mapped to one Ghostty window (tab group).
+/// Ten lettered workspaces, each mapped to one Ghostty window (tab group).
 @MainActor
 final class Workspaces: ObservableObject {
-    static let slots = 9
+    /// Each workspace's key, in slot order: left-hand home row, then the row
+    /// above. The letter is both the hotkey and the label shown everywhere, so
+    /// a tile always says which key raises it. Codes are ANSI virtual keys.
+    static let keys: [(label: String, code: UInt32)] = [
+        ("A", 0), ("S", 1), ("D", 2), ("F", 3), ("G", 5),
+        ("Q", 12), ("W", 13), ("E", 14), ("R", 15), ("T", 17),
+    ]
+    static var slots: Int { keys.count }
 
     @Published private(set) var windowIDs: [String?] = Array(repeating: nil, count: slots)
     @Published private(set) var names: [String] = Array(repeating: "", count: slots)
@@ -24,12 +31,8 @@ final class Workspaces: ObservableObject {
     private var agentDirWatcher: DispatchSourceFileSystemObject?
 
     func start() {
-        if let saved = defaults.stringArray(forKey: key), saved.count == Self.slots {
-            windowIDs = saved.map { $0.isEmpty ? nil : $0 }
-        }
-        if let saved = defaults.stringArray(forKey: homesKey), saved.count == Self.slots {
-            homes = saved
-        }
+        if let saved = restore(key) { windowIDs = saved.map { $0.isEmpty ? nil : $0 } }
+        if let saved = restore(homesKey) { homes = saved }
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
@@ -178,6 +181,15 @@ final class Workspaces: ObservableObject {
             }
         }
         statuses = slotAgents.map { $0.map(\.status).max() }
+    }
+
+    /// A saved array from a build with fewer slots keeps its numbers rather
+    /// than being thrown away and renumbered from scratch.
+    private func restore(_ key: String) -> [String]? {
+        guard var saved = defaults.stringArray(forKey: key), saved.count <= Self.slots
+        else { return nil }
+        saved += Array(repeating: "", count: Self.slots - saved.count)
+        return saved
     }
 
     private func save() {

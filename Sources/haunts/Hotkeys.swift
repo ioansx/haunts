@@ -32,6 +32,3 @@ final class Hotkeys {
         refs.append(ref)
     }
 }
-
-/// ANSI virtual key codes for the digit keys 1...9.
-let digitKeyCodes: [UInt32] = [18, 19, 20, 21, 23, 22, 26, 28, 25]

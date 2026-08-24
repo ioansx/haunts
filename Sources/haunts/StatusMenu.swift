@@ -2,7 +2,7 @@ import AppKit
 import Combine
 import ServiceManagement
 
-/// Menu bar presence: the button shows the active workspace number (with an
+/// Menu bar presence: the button shows the active workspace letter (with an
 /// amber dot when any agent is blocked — visible from any app), and the menu
 /// is a full workspace switcher.
 @MainActor
@@ -30,8 +30,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         if let active = model.active {
             button.image = nil
             let title = NSMutableAttributedString(
-                string: "\(active + 1)",
-                attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)]
+                string: Workspaces.keys[active].label,
+                attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .semibold)]
             )
             if needsAttention {
                 title.append(NSAttributedString(string: " ●", attributes: [
@@ -57,8 +57,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.removeAllItems()
 
         for i in model.usedSlots {
-            let mi = NSMenuItem(title: "", action: #selector(switchTo(_:)), keyEquivalent: "\(i + 1)")
-            mi.keyEquivalentModifierMask = [.control, .option]
+            let mi = NSMenuItem(title: "", action: #selector(switchTo(_:)), keyEquivalent: Workspaces.keys[i].label.lowercased())
+            mi.keyEquivalentModifierMask = [.command, .option]
             mi.target = self
             mi.tag = i
             mi.state = model.active == i ? .on : .off
@@ -67,7 +67,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         }
 
         let add = NSMenuItem(title: "New Workspace", action: #selector(addWorkspace), keyEquivalent: "0")
-        add.keyEquivalentModifierMask = [.control, .option]
+        add.keyEquivalentModifierMask = [.command, .option]
         add.target = self
         menu.addItem(add)
 
@@ -75,9 +75,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
         let assign = NSMenuItem(title: "Move Front Window To", action: nil, keyEquivalent: "")
         let assignMenu = NSMenu()
-        for i in 0..<Workspaces.slots {
-            let mi = NSMenuItem(title: "Workspace \(i + 1)", action: #selector(assignTo(_:)), keyEquivalent: "\(i + 1)")
-            mi.keyEquivalentModifierMask = [.control, .option, .shift]
+        for (i, key) in Workspaces.keys.enumerated() {
+            let mi = NSMenuItem(title: "Workspace \(key.label)", action: #selector(assignTo(_:)), keyEquivalent: key.label.lowercased())
+            mi.keyEquivalentModifierMask = [.command, .option, .shift]
             mi.target = self
             mi.tag = i
             assignMenu.addItem(mi)
@@ -112,7 +112,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
             .baselineOffset: 1.5,
         ])
         title.append(NSAttributedString(
-            string: "\(slot + 1)   \(name)",
+            string: "\(Workspaces.keys[slot].label)   \(name)",
             attributes: [.font: NSFont.menuFont(ofSize: 0)]
         ))
         return title
